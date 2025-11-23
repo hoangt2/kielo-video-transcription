@@ -12,13 +12,17 @@ load_dotenv()
 
 
 try:
-    from openai import OpenAI
+    # --- CHANGE 1: Replace OpenAI import with google-genai ---
+    from google import genai
+    from google.genai.errors import APIError
 except Exception:
-    OpenAI = None  # Allow import-time fallback if package isn't installed
+    # Allow import-time fallback if package isn't installed
+    genai = None 
+    APIError = Exception # Define APIError for cleaner try/except below
+
 
 # ... (ASS_HEADER, format_time_ass, extract_audio, transcribe_finnish, 
-# _get_openai_client, translate_texts_fi_to_en, generate_ass_file, 
-# embed_subtitles, cleanup_temp_file remain the same) ...
+# generate_ass_file, embed_subtitles, cleanup_temp_file remain the same) ...
 
 ASS_HEADER = """
 [Script Info]
@@ -29,8 +33,8 @@ ScaledBorderAndShadow: yes
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: Finnish,Roboto,12,&H00ea72ac,&H000000FF,&H00000000,&H00000000,0,0,0,0,100,100,0,0,1,1,0,2,10,10,15,1
-Style: English,Roboto,12,&H00FFFFFF,&H000000FF,&H00000000,&H00000000,0,0,0,0,100,100,0,0,1,1,0,2,10,10,15,1
+Style: Finnish,Roboto,12,&H00ea72ac,&H000000FF,&H00000000,&H00000000,0,0,0,0,100,100,0,0,1,1,0,2,10,10,25,1
+Style: English,Roboto,12,&H00FFFFFF,&H000000FF,&H00000000,&H00000000,0,0,0,0,100,100,0,0,1,1,0,2,10,10,25,1
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
@@ -59,40 +63,53 @@ def transcribe_finnish(audio_file: Path, model_name: str = "large-v3"):
     return list(finnish_segments), info
 
 
-def _get_openai_client():
-    if OpenAI is None:
+# --- CHANGE 2: Replace _get_openai_client with _get_gemini_client ---
+def _get_gemini_client():
+    if genai is None:
         raise RuntimeError(
-            "The 'openai' package is not installed. Install with: pip install openai"
+            "The 'google-genai' package is not installed. Install with: pip install google-genai"
         )
-    api_key = os.getenv("OPENAI_API_KEY")
+    # Gemini client automatically looks for the GEMINI_API_KEY environment variable.
+    api_key = os.getenv("GEMINI_API_KEY") 
     if not api_key:
-        raise RuntimeError("Missing OPENAI_API_KEY in environment.")
-    return OpenAI(api_key=api_key)
+        # Note: You should set a GEMINI_API_KEY env var instead of OPENAI_API_KEY
+        raise RuntimeError("Missing GEMINI_API_KEY in environment.") 
+    
+    # Initialize the client. The default is usually sufficient.
+    return genai.Client(api_key=api_key)
 
 
-def translate_texts_fi_to_en(texts: List[str], model: str = "gpt-4o-mini") -> List[str]:
-    """Translate a list of Finnish strings to English using OpenAI.
+# --- CHANGE 3: Update function signature, docstring, and implementation ---
+def translate_texts_fi_to_en(texts: List[str], model: str = "gemini-2.5-flash") -> List[str]:
+    """Translate a list of Finnish strings to English using Google Gemini.
 
     Args:
         texts: list of Finnish strings.
-        model: OpenAI model name suitable for translation.
+        model: Gemini model name suitable for translation (e.g., 'gemini-2.5-flash').
 
     Returns:
         List of translated English strings in the same order.
     """
-    client = _get_openai_client()
+    client = _get_gemini_client()
 
     # Chunk requests to avoid extremely large prompts; adjust as needed
     batch_size = 32
     outputs: List[str] = []
 
-    system_prompt = (
+    system_instruction = (
         "You are a professional translator. Translate from Finnish to English. "
         "Preserve meaning, tone, and proper names. Return only the translated text."
+    )
+    
+    # Configure the model for a deterministic, text-only response
+    config = genai.types.GenerateContentConfig(
+        system_instruction=system_instruction,
+        temperature=0.0,
     )
 
     for i in range(0, len(texts), batch_size):
         chunk = texts[i : i + batch_size]
+        
         # Create a single message asking for line-by-line translations, delimited by \n\n
         numbered = "\n\n".join(f"{idx+1}. {t}" for idx, t in enumerate(chunk))
         user_prompt = (
@@ -100,42 +117,29 @@ def translate_texts_fi_to_en(texts: List[str], model: str = "gpt-4o-mini") -> Li
             "Respond with the translations only, one per line, in the same numbering order, without extra commentary.\n\n"
             f"{numbered}"
         )
+        
+        text = "" # Initialize text output
 
-        # Prefer Responses API when available; fall back to chat.completions
         try:
-            # responses API (Note: This might require a specific version/setup of the OpenAI library)
-            resp = client.responses.create(
+            # --- API Call Change: Use client.models.generate_content (single turn) ---
+            response = client.models.generate_content(
                 model=model,
-                input=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_prompt},
-                ],
+                contents=user_prompt, # Send the prompt directly
+                config=config,
             )
-            text = resp.output_text
-        except AttributeError:
-             # fallback to chat.completions for broader SDK compatibility
-            chat = client.chat.completions.create(
-                model=model,
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_prompt},
-                ],
-                temperature=0,
-            )
-            text = chat.choices[0].message.content or ""
-        except Exception:
-            # fallback to chat.completions for broader SDK compatibility
-            chat = client.chat.completions.create(
-                model=model,
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_prompt},
-                ],
-                temperature=0,
-            )
-            text = chat.choices[0].message.content or ""
+            text = response.text or ""
 
-        # Split by lines and clean numbering
+        # Catch Gemini-specific API errors
+        except APIError as e: 
+            print(f"Gemini API Error: {e}")
+            # Use empty string for this chunk on failure
+            text = ""
+        except Exception as e:
+            print(f"An unexpected error occurred: {e}")
+            # Use empty string for this chunk on failure
+            text = ""
+
+        # Split by lines and clean numbering (logic remains good for Gemini output)
         lines = [ln.strip() for ln in text.strip().splitlines() if ln.strip()]
         cleaned: List[str] = []
         for ln in lines:
@@ -144,6 +148,7 @@ def translate_texts_fi_to_en(texts: List[str], model: str = "gpt-4o-mini") -> Li
 
         # Pad or truncate to match the chunk length
         if len(cleaned) != len(chunk):
+            print(f"Warning: Translation response line count ({len(cleaned)}) does not match input chunk size ({len(chunk)}). Padding/truncating.")
             cleaned = (cleaned + [""] * len(chunk))[: len(chunk)]
 
         outputs.extend(cleaned)
@@ -190,7 +195,7 @@ def cleanup_temp_file(file_path: Path):
 def generate_subtitles(
     video_path: str, 
     output_video_path: str, # NEW REQUIRED ARGUMENT
-    translation_model: str = "gpt-4o-mini", 
+    translation_model: str = "gemini-2.5-flash", # --- CHANGE 4: Change default model ---
     subtitle_folder: str = None
 ):
     os.environ["HF_HUB_DISABLE_SYMLINKS_WARNING"] = "1"
@@ -256,8 +261,9 @@ def generate_subtitles(
         finnish_segments, info = transcribe_finnish(audio_file)
         print(f"Detected language '{info.language}' ({info.language_probability:.2f}).")
 
-        print("Step 3: Translating Finnish → English with OpenAI...")
+        print("Step 3: Translating Finnish → English with Gemini...")
         fi_texts = [s.text.strip().replace("\n", " ") for s in finnish_segments]
+        # The model is now passed to the updated function
         en_texts = translate_texts_fi_to_en(fi_texts, model=translation_model)
         print("Translation complete.")
 
@@ -287,7 +293,7 @@ if __name__ == "__main__":
     SUBTITLES_DIR = "subtitles"
     OUTPUT_DIR = "output" # Define output dir for testing
     
-    video_filename = "työkalut.mp4"
+    video_filename = "ruokaostokset.mp4"
     
     input_video_path = Path(SOURCE_DIR) / video_filename
     final_output_path = Path(OUTPUT_DIR) / video_filename # Target name in output folder

@@ -1,65 +1,66 @@
-# Python virtual environment (venv)
+# Video Transcription and Processing Pipeline
 
-This workspace uses a virtual environment located at `./.venv`.
+This project automates the processing of Finnish videos by generating bilingual subtitles (Finnish/English), slowing down the playback, adding background music, and appending an outro.
 
-## Activate venv (PowerShell)
+## Features
 
-To activate the virtual environment in PowerShell (recommended):
+- **Automatic Subtitling**: Transcribes Finnish audio using `faster-whisper` and translates it to English using Google Gemini (`gemini-2.5-flash`).
+- **Video Slowdown**: Slows down the video and audio by 20% to make it easier for learners to follow.
+- **Audio Mixing**: Adds background music with automatic volume ducking.
+- **Outro Addition**: Appends a standard outro video to the end.
+- **Batch Processing**: Processes all videos in the `source` directory automatically.
 
-```powershell
-# Dot-source the activation script
-. .\.venv\Scripts\Activate.ps1
+## Prerequisites
 
-# Verify you're using the venv Python
-python --version
-```
+- **Python 3.8+**
+- **FFmpeg**: Must be installed and available in your system PATH.
+- **Google Gemini API Key**: Required for translation. Set the `GEMINI_API_KEY` environment variable.
 
-If PowerShell prevents script execution due to ExecutionPolicy, run once (as your user) to allow running activation scripts:
+## Setup
 
-```powershell
-Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
-```
+1.  **Create and Activate Virtual Environment**:
 
-Or bypass for a single session (keeps policy unchanged):
+    **PowerShell**:
+    ```powershell
+    python -m venv .venv
+    . .\.venv\Scripts\Activate.ps1
+    ```
 
-```powershell
-powershell -ExecutionPolicy Bypass -NoProfile -Command ". .\.venv\Scripts\Activate.ps1; python --version"
-```
+    **Command Prompt**:
+    ```cmd
+    python -m venv .venv
+    .venv\Scripts\activate.bat
+    ```
 
-## Activate venv (Command Prompt)
+2.  **Install Dependencies**:
+    ```bash
+    pip install -r requirements.txt
+    ```
 
-```cmd
-.venv\Scripts\activate.bat
-```
+3.  **Environment Variables**:
+    Create a `.env` file in the root directory (or set system env vars) with your API key:
+    ```
+    GEMINI_API_KEY=your_api_key_here
+    ```
 
-## Create the venv (if you need to recreate it)
+4.  **Prepare Assets**:
+    Ensure the `presets` folder contains:
+    - `background_music.mp3`: Background music file.
+    - `outro.mp4`: Outro video file.
 
-If the `.venv` folder doesn't exist or you want to recreate it, run:
+## Usage
 
-```powershell
-python -m venv .venv
-. .\.venv\Scripts\Activate.ps1
-python -m pip install -U pip setuptools wheel
-```
+1.  **Place Videos**: Put your source video files (`.mp4`, `.mov`, `.avi`, `.mkv`) in the `source` directory.
+2.  **Run the Batch Processor**:
+    ```bash
+    python process_batch.py
+    ```
+3.  **Output**: Processed videos will be saved in the `output` directory. Subtitle files (`.ass`) are saved in the `subtitles` directory.
 
-## Install requirements (optional)
+## Scripts Overview
 
-If you have a `requirements.txt` file, install dependencies after activation:
-
-```powershell
-pip install -r requirements.txt
-```
-
-## Run the project
-
-After activation you can run the project with:
-
-```powershell
-python main.py
-```
-
----
-
-Notes:
-- The workspace Python detected: `./.venv/Scripts/python.exe` (if present).
-- If you want me to create or recreate the virtualenv for you, tell me and I'll run the necessary steps.
+-   **`process_batch.py`**: The main orchestrator script. It finds videos in `source`, runs them through the pipeline, and manages temporary files.
+-   **`subtitle_generator.py`**: Handles audio extraction, transcription (Whisper), translation (Gemini), and subtitle embedding.
+-   **`slow_down_video.py`**: Slows down video and audio by 20%.
+-   **`audio_mixer.py`**: Mixes background music with the video's audio.
+-   **`add_outro.py`**: Appends the outro video.

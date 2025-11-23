@@ -16,7 +16,7 @@ SOURCE_DIR = Path("source")
 OUTPUT_DIR = Path("output")
 SUBTITLES_DIR = Path("subtitles")
 TEMP_DIR = Path("temp_processing") 
-TRANSLATION_MODEL = "gpt-4o-mini" 
+TRANSLATION_MODEL = "gemini-2.5-flash" 
 # --- End Configuration ---
 
 
@@ -113,7 +113,6 @@ def batch_process_videos():
             )
         else:
             print("Skipping outro addition: Mixed video not found in /output.")
-
 
         # --- STEP 5: Cleanup ASS file and Temp Video ---
         

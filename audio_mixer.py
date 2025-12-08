@@ -2,20 +2,34 @@ import ffmpeg
 from pathlib import Path
 import os
 import shutil
+import random
 
 # --- Configuration ---
 PRESETS_DIR = Path("presets")
 SOURCE_DIR = Path("source")
 OUTPUT_DIR = Path("output")
 
-# Define the name of the background music file (must be in the /presets folder)
-MUSIC_FILE_NAME = "background_music.mp3"
-
 # Define the amount to reduce the background music's volume
 MUSIC_VOLUME_REDUCTION_DB = -15.0
 # --- End Configuration ---
 
 # ... (setup_directories and get_video_duration remain the same) ...
+
+def get_random_music_file():
+    """
+    Randomly selects a background music file from the presets directory.
+    Looks for files matching the pattern 'background_music*.mp3'.
+    """
+    music_files = list(PRESETS_DIR.glob("background_music*.mp3"))
+    
+    if not music_files:
+        print(f"⚠️  No background music files found in '{PRESETS_DIR}' directory.")
+        print(f"   Expected files matching pattern: background_music*.mp3")
+        return None
+    
+    selected_music = random.choice(music_files)
+    print(f"🎵 Selected background music: {selected_music.name}")
+    return selected_music
 
 def setup_directories():
     """Ensure required directories exist."""
@@ -54,10 +68,15 @@ def add_background_music(
     """
     Adds background music to a video file, using a temporary file for mixing
     to avoid FFmpeg's 'same as input' error.
+    Randomly selects a background music file from the presets directory.
     """
     setup_directories() 
     
-    music_path = PRESETS_DIR / MUSIC_FILE_NAME
+    music_path = get_random_music_file()
+    if music_path is None:
+        print("❌ No background music file available. Skipping audio mixing.")
+        return
+    
     video_path = input_video_path
     
     # CRITICAL FIX: Define a temporary output path next to the final output file
@@ -65,11 +84,6 @@ def add_background_music(
 
     if not video_path.exists():
         print(f"Error: Video file not found at '{video_path}'")
-        return
-    
-    if not music_path.exists():
-        print(f"Error: Background music file not found at '{music_path}'")
-        print(f"Please place '{MUSIC_FILE_NAME}' in the '{PRESETS_DIR.name}' folder.")
         return
 
     print(f"Processing audio for video: {video_path.name}")

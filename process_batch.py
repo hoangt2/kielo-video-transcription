@@ -2,21 +2,23 @@ import os
 import shutil
 from pathlib import Path
 import time
+import argparse
 
 # ... (Imports for subtitle_generator, audio_mixer, slow_down_video remain) ...
 from subtitle_generator import generate_subtitles, cleanup_temp_file
 from audio_mixer import add_background_music 
 from slow_down_video import slow_down_video 
 
-# NEW IMPORT:
-from add_outro import add_outro # IMPORT NEW FUNCTION HERE 
+# NEW IMPORTS:
+from add_outro import add_outro # IMPORT NEW FUNCTION HERE
+from increase_fps import increase_fps # Import FPS increase function 
 
 # --- Configuration ---
 SOURCE_DIR = Path("source")
 OUTPUT_DIR = Path("output")
 SUBTITLES_DIR = Path("subtitles")
 TEMP_DIR = Path("temp_processing") 
-TRANSLATION_MODEL = "gemini-2.5-flash" 
+TRANSLATION_MODEL = "gemini-2.5-flash"
 # --- End Configuration ---
 
 
@@ -29,10 +31,13 @@ def setup_directories():
     print(f"Directories checked/created: {SOURCE_DIR.name}, {OUTPUT_DIR.name}, {SUBTITLES_DIR.name}, {TEMP_DIR.name}")
 
 
-def batch_process_videos():
+def batch_process_videos(include_outro=True):
     """
     Loops through videos, performs subtitling, slows down video, adds background music,
-    appends outro, and moves the .ass file.
+    appends outro (optional), increases FPS, and moves the .ass file.
+    
+    Args:
+        include_outro (bool): Whether to add outro video. Default is True.
     """
     setup_directories()
     
@@ -53,11 +58,18 @@ def batch_process_videos():
         print(f"Processing video {i+1}/{len(video_files)}: {video_file_path.name}")
         print("="*50)
         
+        # Generate output filename with appropriate prefix
+        base_name = video_file_path.stem  # Original filename without extension
+        if include_outro:
+            output_filename = f"social_media_daily_vocab_fi_{base_name}.mp4"
+        else:
+            output_filename = f"daily_vocab_fi_{base_name}.mp4"
+        
         # Define paths
-        subtitled_video_path = OUTPUT_DIR / video_file_path.name
-        slowed_video_path = TEMP_DIR / video_file_path.name
-        final_output_video_path = OUTPUT_DIR / video_file_path.name
-        ass_file_in_source = video_file_path.with_suffix(".ass") # Re-added here for safety
+        subtitled_video_path = OUTPUT_DIR / video_file_path.name  # Temporary file, original name
+        slowed_video_path = TEMP_DIR / video_file_path.name  # Temporary file
+        final_output_video_path = OUTPUT_DIR / output_filename  # Final output with prefix
+        ass_file_in_source = video_file_path.with_suffix(".ass")
         
         # --- STEP 1: Subtitling ---
         print("Subtitling Step...")
@@ -102,19 +114,35 @@ def batch_process_videos():
         else:
              print("Skipping audio mixing: Input video for mixing not found.")
 
-        # --- STEP 4: Add Outro (New Last Step) ---
-        print("\nOutro Addition Step...")
+        # --- STEP 4: Add Outro ---
+        if include_outro:
+            print("\nOutro Addition Step...")
+            
+            # Reads from /output (File C), writes back to /output (Overwrites File C)
+            if final_output_video_path.exists():
+                add_outro(
+                    input_video_path=final_output_video_path,
+                    final_output_path=final_output_video_path
+                )
+            else:
+                print("Skipping outro addition: Mixed video not found in /output.")
+        else:
+            print("\n⏭️  Skipping outro addition (--no-outro flag)")
+
+        # --- STEP 5: Increase FPS to 30 ---
+        print("\nFPS Enhancement Step...")
         
         # Reads from /output (File C), writes back to /output (Overwrites File C)
         if final_output_video_path.exists():
-            add_outro(
+            increase_fps(
                 input_video_path=final_output_video_path,
-                final_output_path=final_output_video_path
+                output_video_path=final_output_video_path,
+                target_fps=30
             )
         else:
-            print("Skipping outro addition: Mixed video not found in /output.")
+            print("Skipping FPS increase: Final video not found in /output.")
 
-        # --- STEP 5: Cleanup ASS file and Temp Video ---
+        # --- STEP 6: Cleanup ASS file and Temp Video ---
         
         # Move the .ass file from /source to /subtitles
         if ass_file_in_source.exists():
@@ -125,6 +153,11 @@ def batch_process_videos():
         # Clean up the intermediate (slowed) video file
         cleanup_temp_file(slowed_video_path)
         print(f"-> Cleaned up temporary slowed video: {slowed_video_path.name}")
+        
+        # Clean up the original subtitled file if final output has different name
+        if subtitled_video_path != final_output_video_path and subtitled_video_path.exists():
+            cleanup_temp_file(subtitled_video_path)
+            print(f"-> Cleaned up temporary subtitled video: {subtitled_video_path.name}")
 
 
     # Clean up the entire temp directory at the end of the batch
@@ -135,9 +168,27 @@ def batch_process_videos():
     print("\n" + "*"*50)
     print(f"Batch processing complete! Processed {len(video_files)} video(s).")
     print(f"Total elapsed time: {total_time:.2f} seconds.")
-    print("Final videos (subtitled, slowed, mixed, and with outro) are in the '/output' folder.")
+    outro_status = "with outro" if include_outro else "without outro"
+    print(f"Final videos (subtitled, slowed, mixed, {outro_status}, and 30 fps) are in the '/output' folder.")
     print("*"*50)
 
 
+def main():
+    """Parse command-line arguments and run batch processing."""
+    parser = argparse.ArgumentParser(
+        description="Batch process videos with subtitles, slowdown, music, outro, and FPS enhancement."
+    )
+    parser.add_argument(
+        "--no-outro",
+        action="store_true",
+        help="Skip outro addition (output will use 'daily_vocab_fi_' prefix instead of 'social_media_daily_vocab_fi_')"
+    )
+    
+    args = parser.parse_args()
+    
+    # Run batch processing with the include_outro flag (inverse of --no-outro)
+    batch_process_videos(include_outro=not args.no_outro)
+
+
 if __name__ == "__main__":
-    batch_process_videos()
+    main()

@@ -10,7 +10,7 @@ SOURCE_DIR = Path("source")
 OUTPUT_DIR = Path("output")
 
 # Define the amount to reduce the background music's volume
-MUSIC_VOLUME_REDUCTION_DB = -15.0
+MUSIC_VOLUME_REDUCTION_DB = -20.0
 # --- End Configuration ---
 
 # ... (setup_directories and get_video_duration remain the same) ...

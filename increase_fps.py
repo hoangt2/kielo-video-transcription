@@ -1,19 +1,19 @@
 #!/usr/bin/env python3
 """
-Increases video FPS to 30 using FFmpeg motion interpolation.
+Increases video FPS to 60 using FFmpeg motion interpolation.
 """
 import subprocess
 from pathlib import Path
 
 
-def increase_fps(input_video_path, output_video_path=None, target_fps=30):
+def increase_fps(input_video_path, output_video_path=None, target_fps=60):
     """
     Increases the video's FPS to the target FPS using motion interpolation.
     
     Args:
         input_video_path: Path to the input video (can be string or Path object)
         output_video_path: Path for the output video. If None, overwrites input file.
-        target_fps: Target frames per second (default: 30)
+        target_fps: Target frames per second (default: 60)
     
     Returns:
         bool: True if successful, False otherwise
@@ -88,12 +88,12 @@ if __name__ == "__main__":
     if len(sys.argv) < 2:
         print("Usage: python increase_fps.py <input_video> [output_video] [target_fps]")
         print("Example: python increase_fps.py input.mp4")
-        print("Example: python increase_fps.py input.mp4 output.mp4 30")
+        print("Example: python increase_fps.py input.mp4 output.mp4 60")
         sys.exit(1)
     
     input_video = sys.argv[1]
     output_video = sys.argv[2] if len(sys.argv) > 2 else None
-    fps = int(sys.argv[3]) if len(sys.argv) > 3 else 30
+    fps = int(sys.argv[3]) if len(sys.argv) > 3 else 60
     
     success = increase_fps(input_video, output_video, fps)
     sys.exit(0 if success else 1)

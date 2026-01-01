@@ -8,7 +8,7 @@ This project automates the processing of Finnish videos by generating bilingual 
 - **Video Slowdown**: Slows down the video and audio by 20% to make it easier for learners to follow.
 - **Audio Mixing**: Adds background music with automatic volume ducking. Randomly selects from available music files in `/presets`.
 - **Outro Addition**: Appends a standard outro video to the end (optional, configurable).
-- **FPS Enhancement**: Increases video frame rate to 30 fps using motion interpolation for smoother playback.
+- **FPS Enhancement**: Increases video frame rate to 60 fps using motion interpolation for smoother playback.
 - **Batch Processing**: Processes all videos in the `source` directory automatically.
 - **Custom Output Naming**: Automatically prefixes output files based on configuration.
 
@@ -85,19 +85,35 @@ sudo apt-get install pkg-config ffmpeg
 
 2.  **Run the Batch Processor**:
     
-    **With outro** (default):
+    **All steps enabled** (default - no flags needed):
     ```bash
     python process_batch.py
     ```
-    Output files will be named: `social_media_daily_vocab_fi_<filename>.mp4`
     
-    **Without outro**:
+    **Select specific steps** with `--add-*` flags:
     ```bash
-    python process_batch.py --no-outro
+    # Only add subtitles
+    python process_batch.py --add-subtitles
+    
+    # Subtitles + music (no slowdown, outro, or FPS change)
+    python process_batch.py --add-subtitles --add-music
+    
+    # All steps except slowdown
+    python process_batch.py --add-subtitles --add-music --add-outro --add-fps
     ```
-    Output files will be named: `daily_vocab_fi_<filename>.mp4`
+    
+    **Available flags**:
+    | Flag | Description |
+    |------|-------------|
+    | `--add-subtitles` | Add Finnish/English subtitles |
+    | `--add-slowdown` | Slow down video by 20% |
+    | `--add-music` | Add random background music |
+    | `--add-outro` | Append outro video (changes filename prefix to `social_media_daily_vocab_fi_`) |
+    | `--add-fps` | Increase FPS to 60 |
 
 3.  **Output**: Processed videos will be saved in the `output` directory. Subtitle files (`.ass`) are saved in the `subtitles` directory.
+    - With `--add-outro`: `social_media_daily_vocab_fi_<filename>.mp4`
+    - Without `--add-outro`: `daily_vocab_fi_<filename>.mp4`
 
 ## Scripts Overview
 
@@ -106,4 +122,4 @@ sudo apt-get install pkg-config ffmpeg
 -   **`slow_down_video.py`**: Slows down video and audio by 20%.
 -   **`audio_mixer.py`**: Mixes background music with the video's audio.
 -   **`add_outro.py`**: Appends the outro video.
--   **`increase_fps.py`**: Increases video frame rate to 30 fps using motion interpolation.
+-   **`increase_fps.py`**: Increases video frame rate to 60 fps using motion interpolation.

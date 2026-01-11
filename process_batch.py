@@ -31,7 +31,7 @@ def setup_directories():
     print(f"Directories checked/created: {SOURCE_DIR.name}, {OUTPUT_DIR.name}, {SUBTITLES_DIR.name}, {TEMP_DIR.name}")
 
 
-def batch_process_videos(add_subtitles=True, add_slowdown=True, add_music=True, add_outro=True, add_fps=True):
+def batch_process_videos(add_subtitles=True, add_slowdown=True, add_music=True, add_outro_step=True, add_fps=True):
     """
     Loops through videos and performs selected processing steps.
     
@@ -39,7 +39,7 @@ def batch_process_videos(add_subtitles=True, add_slowdown=True, add_music=True, 
         add_subtitles (bool): Whether to add Finnish/English subtitles. Default is True.
         add_slowdown (bool): Whether to slow down video by 20%. Default is True.
         add_music (bool): Whether to add background music. Default is True.
-        add_outro (bool): Whether to add outro video. Default is True.
+        add_outro_step (bool): Whether to add outro video. Default is True.
         add_fps (bool): Whether to increase FPS to60. Default is True.
     """
     setup_directories()
@@ -63,7 +63,7 @@ def batch_process_videos(add_subtitles=True, add_slowdown=True, add_music=True, 
         
         # Generate output filename with appropriate prefix
         base_name = video_file_path.stem  # Original filename without extension
-        if add_outro:
+        if add_outro_step:
             output_filename = f"social_media_daily_vocab_fi_{base_name}.mp4"
         else:
             output_filename = f"daily_vocab_fi_{base_name}.mp4"
@@ -133,7 +133,7 @@ def batch_process_videos(add_subtitles=True, add_slowdown=True, add_music=True, 
                 shutil.copy(str(video_input_for_mixing), str(final_output_video_path))
 
         # --- STEP 4: Add Outro ---
-        if add_outro:
+        if add_outro_step:
             print("\nOutro Addition Step...")
             
             # Reads from /output (File C), writes back to /output (Overwrites File C)
@@ -236,7 +236,7 @@ def main():
             add_subtitles=args.add_subtitles,
             add_slowdown=args.add_slowdown,
             add_music=args.add_music,
-            add_outro=args.add_outro,
+            add_outro_step=args.add_outro,
             add_fps=args.add_fps
         )
     else:
@@ -245,7 +245,7 @@ def main():
             add_subtitles=True,
             add_slowdown=True,
             add_music=True,
-            add_outro=True,
+            add_outro_step=True,
             add_fps=True
         )
 

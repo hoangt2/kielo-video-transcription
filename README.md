@@ -85,10 +85,18 @@ sudo apt-get install pkg-config ffmpeg
 
 2.  **Run the Batch Processor**:
     
+    **Production mode** (recommended for final output):
+    ```bash
+    python process_batch.py --prod
+    ```
+    Enables: slowdown, music, and FPS enhancement (no subtitles or outro)  
+    Output: `daily_vocab_fi_<filename>.mp4`
+    
     **All steps enabled** (default - no flags needed):
     ```bash
     python process_batch.py
     ```
+    Enables: subtitles, slowdown, music, outro, and FPS enhancement
     
     **Select specific steps** with `--add-*` flags:
     ```bash
@@ -105,6 +113,7 @@ sudo apt-get install pkg-config ffmpeg
     **Available flags**:
     | Flag | Description |
     |------|-------------|
+    | `--prod` | **Production mode**: enables slowdown, music, and FPS (no subtitles/outro) |
     | `--add-subtitles` | Add Finnish/English subtitles |
     | `--add-slowdown` | Slow down video by 20% |
     | `--add-music` | Add random background music |

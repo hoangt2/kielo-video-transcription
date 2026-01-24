@@ -224,8 +224,24 @@ def main():
         action="store_true",
         help="Increase FPS to 60using motion interpolation"
     )
+    parser.add_argument(
+        "--prod",
+        action="store_true",
+        help="Production mode: enables slowdown, music, and FPS (no subtitles or outro). Output: daily_vocab_fi_<filename>.mp4"
+    )
     
     args = parser.parse_args()
+    
+    # Handle --prod flag
+    if args.prod:
+        batch_process_videos(
+            add_subtitles=False,
+            add_slowdown=True,
+            add_music=True,
+            add_outro_step=False,
+            add_fps=True
+        )
+        return
     
     # If no flags specified, enable all steps (default behavior)
     any_flag_set = any([args.add_subtitles, args.add_slowdown, args.add_music, args.add_outro, args.add_fps])

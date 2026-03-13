@@ -31,14 +31,35 @@ def add_outro(input_video_path: Path, final_output_path: Path) -> bool:
     temp_output_path = final_output_path.with_name(f"temp_final_{final_output_path.name}")
     
     try:
+        # Probe the input video to get its dimensions
+        probe = ffmpeg.probe(str(input_video_path))
+        video_stream_info = next((stream for stream in probe['streams'] if stream['codec_type'] == 'video'), None)
+        
+        if not video_stream_info:
+            print("Error: Could not find video stream in input video.")
+            return False
+            
+        width = int(video_stream_info['width'])
+        height = int(video_stream_info['height'])
+        
+        print(f"Input video resolution: {width}x{height}")
+
         # Define the two inputs
         main_input = ffmpeg.input(str(input_video_path))
         outro_input = ffmpeg.input(str(outro_path))
+        
+        # Scale the outro to match the input video's resolution
+        # We also enforce SAR (Sample Aspect Ratio) to 1 to avoid mismatches if one has SAR 1:1 and other 0:1 or different
+        scaled_outro_video = (
+            outro_input.video
+            .filter('scale', width, height)
+            .filter('setsar', '1')
+        )
 
         # Concatenate both video and audio streams
         concatenated_streams = ffmpeg.concat(
             main_input.video, main_input.audio,
-            outro_input.video, outro_input.audio,
+            scaled_outro_video, outro_input.audio,
             v=1, a=1
         ).node
 
